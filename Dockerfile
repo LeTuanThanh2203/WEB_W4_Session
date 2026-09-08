@@ -11,7 +11,7 @@ FROM tomcat:11-jdk21-temurin
 
 RUN rm -rf /usr/local/tomcat/webapps/*
 
-COPY --from=build /app/target/WEB_W1-1.0-SNAPSHOT.war /usr/local/tomcat/webapps/ROOT.war
+COPY --from=build /app/target/WEB_SESSION_W4-1.0-SNAPSHOT.war /usr/local/tomcat/webapps/ROOT.war
 
 EXPOSE 8080
 
