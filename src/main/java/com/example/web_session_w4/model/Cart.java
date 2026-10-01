@@ -7,22 +7,22 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Model class representing the shopping cart, containing a collection of CartItems.
+ * Model Cart quản lý danh sách LineItem theo kiểu đối tượng Java cơ bản.
  */
 public class Cart implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    private List<CartItem> items;
+    private List<LineItem> items;
 
     public Cart() {
         this.items = new ArrayList<>();
     }
 
-    public List<CartItem> getItems() {
+    public List<LineItem> getItems() {
         return items;
     }
 
-    public void setItems(List<CartItem> items) {
+    public void setItems(List<LineItem> items) {
         this.items = items;
     }
 
@@ -34,74 +34,50 @@ public class Cart implements Serializable {
         return items.isEmpty();
     }
 
-    /**
-     * Adds an item to the cart.
-     * If the item already exists in the cart, its quantity is increased.
-     */
-    public void addItem(CartItem item) {
-        String code = item.getProductId();
+    public void addItem(LineItem item) {
+        String code = item.getProduct().getCode();
         int quantity = item.getQuantity();
 
-        for (CartItem existingItem : items) {
-            if (existingItem.getProductId().equalsIgnoreCase(code)) {
-                existingItem.setQuantity(existingItem.getQuantity() + quantity);
-                if ((existingItem.getProductName() == null || existingItem.getProductName().isEmpty()) && item.getProductName() != null) {
-                    existingItem.setProductName(item.getProductName());
-                }
-                if (existingItem.getPrice() <= 0 && item.getPrice() > 0) {
-                    existingItem.setPrice(item.getPrice());
-                }
+        for (LineItem lineItem : items) {
+            if (lineItem.getProduct().getCode().equalsIgnoreCase(code)) {
+                lineItem.setQuantity(lineItem.getQuantity() + quantity);
                 return;
             }
         }
         items.add(item);
     }
 
-    /**
-     * Updates the quantity of a product in the cart.
-     * If quantity is <= 0, the item is removed from the cart.
-     */
-    public void updateQuantity(String productId, int quantity) {
-        for (int i = 0; i < items.size(); i++) {
-            CartItem item = items.get(i);
-            if (item.getProductId().equalsIgnoreCase(productId)) {
-                if (quantity <= 0) {
-                    items.remove(i);
-                } else {
-                    item.setQuantity(quantity);
-                }
+    public void updateQuantity(String code, int quantity) {
+        if (quantity <= 0) {
+            removeItem(code);
+            return;
+        }
+        for (LineItem item : items) {
+            if (item.getProduct().getCode().equalsIgnoreCase(code)) {
+                item.setQuantity(quantity);
                 return;
             }
         }
     }
 
-    /**
-     * Removes an item from the cart by its product ID.
-     */
-    public void removeItem(String productId) {
+    public void removeItem(String code) {
         for (int i = 0; i < items.size(); i++) {
-            CartItem item = items.get(i);
-            if (item.getProductId().equalsIgnoreCase(productId)) {
+            LineItem item = items.get(i);
+            if (item.getProduct().getCode().equalsIgnoreCase(code)) {
                 items.remove(i);
                 return;
             }
         }
     }
 
-    /**
-     * Calculates the total price of all items in the cart.
-     */
     public double getTotal() {
-        double total = 0;
-        for (CartItem item : items) {
+        double total = 0.0;
+        for (LineItem item : items) {
             total += item.getTotal();
         }
         return total;
     }
 
-    /**
-     * Formatted total amount (e.g. $29.90)
-     */
     public String getTotalCurrencyFormat() {
         NumberFormat currency = NumberFormat.getCurrencyInstance(Locale.US);
         return currency.format(getTotal());

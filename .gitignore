@@ -37,3 +37,7 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+### VNPAY Sensitive Configuration ###
+config.properties
+**/config.properties

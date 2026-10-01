@@ -1,0 +1,8 @@
+# VNPAY Sandbox Configuration Example
+# Copy this file to config.properties and fill in your actual credentials from https://sandbox.vnpayment.vn/devreg
+
+vnp_TmnCode=YOUR_TMN_CODE
+vnp_HashSecret=YOUR_HASH_SECRET
+vnp_Url=https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+vnp_ReturnUrl=
+vnp_ExchangeRate=25000

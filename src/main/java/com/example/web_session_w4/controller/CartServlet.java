@@ -1,7 +1,8 @@
 package com.example.web_session_w4.controller;
 
 import com.example.web_session_w4.model.Cart;
-import com.example.web_session_w4.model.CartItem;
+import com.example.web_session_w4.model.LineItem;
+import com.example.web_session_w4.model.Product;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -11,172 +12,113 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 
-/**
- * Controller servlet to manage shopping cart operations (/cart).
- * Handles adding, updating, removing items, and navigation.
- */
-@WebServlet(name = "CartServlet", urlPatterns = {"/cart"})
+@WebServlet(name = "CartServlet", urlPatterns = {"/cart", "/quantity"})
 public class CartServlet extends HttpServlet {
-    private static final long serialVersionUID = 1L;
-
-    // Default catalog for fallback product information lookup
-    private static final Map<String, ProductInfo> CATALOG = new HashMap<>();
-
-    static {
-        CATALOG.put("8601", new ProductInfo("86 (the band) - True Life Songs and Pictures", 14.95));
-        CATALOG.put("pf01", new ProductInfo("Paddlefoot - The first CD", 12.95));
-        CATALOG.put("pf02", new ProductInfo("Paddlefoot - The second CD", 14.95));
-        CATALOG.put("jr01", new ProductInfo("Joe Rut - Genuine Wood Grained Finish", 14.95));
-    }
-
-    private static class ProductInfo {
-        String name;
-        double price;
-
-        ProductInfo(String name, double price) {
-            this.name = name;
-            this.price = price;
-        }
-    }
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        String action = request.getParameter("action");
-        if ("shop".equalsIgnoreCase(action)) {
-            response.sendRedirect(request.getContextPath() + "/index.jsp");
-        } else {
-            request.getRequestDispatcher("/cart.jsp").forward(request, response);
-        }
+        doPost(request, response);
     }
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
-        // 1. Get current user's session (creates a new session if none exists)
-        /*
-         * EXPLANATION FOR STUDENTS:
-         * - Session ID: Tomcat automatically assigns a unique Session ID (JSESSIONID) to each client/browser.
-         * - Session storage: HttpSession stores data on the server side tied to this specific client's Session ID.
-         * - Lifetime: The cart persists across requests as long as the session is active.
-         * - Expiration: When the session expires (or user closes browser/logs out), Tomcat invalidates the session and the cart is lost.
-         */
         HttpSession session = request.getSession();
-        System.out.println("Session ID: " + session.getId());
-
-        // 2. Retrieve existing cart from session, or create a new one if it doesn't exist yet
         Cart cart = (Cart) session.getAttribute("cart");
         if (cart == null) {
             cart = new Cart();
         }
 
-        // 3. Determine requested action (default: view cart)
         String action = request.getParameter("action");
         if (action == null) {
             action = "cart";
         }
 
-        String redirectUrl = request.getContextPath() + "/cart.jsp";
+        String url = "/cart.jsp";
 
-        // 4. Handle actions
-        if ("add".equalsIgnoreCase(action)) {
-            // Read product parameter (supports both 'productId' and 'productCode')
-            String productId = request.getParameter("productId");
-            if (productId == null || productId.trim().isEmpty()) {
-                productId = request.getParameter("productCode");
-            }
+        switch (action.toLowerCase().trim()) {
+            case "shop":
+                url = "/index.jsp";
+                break;
 
-            String productName = request.getParameter("productName");
-            if (productName == null || productName.trim().isEmpty()) {
-                productName = request.getParameter("description");
-            }
+            case "add":
+                addToCart(request, cart);
+                session.setAttribute("cart", cart);
+                url = "/cart.jsp";
+                break;
 
-            String priceStr = request.getParameter("price");
-            String quantityStr = request.getParameter("quantity");
+            case "update":
+                updateCart(request, cart);
+                session.setAttribute("cart", cart);
+                url = "/cart.jsp";
+                break;
 
-            int quantity = 1;
-            if (quantityStr != null && !quantityStr.trim().isEmpty()) {
-                try {
-                    quantity = Integer.parseInt(quantityStr);
-                } catch (NumberFormatException e) {
-                    quantity = 1;
-                }
-            }
+            case "remove":
+                removeFromCart(request, cart);
+                session.setAttribute("cart", cart);
+                url = "/cart.jsp";
+                break;
 
-            double price = 0.0;
-            if (priceStr != null && !priceStr.trim().isEmpty()) {
-                try {
-                    price = Double.parseDouble(priceStr.replace("$", ""));
-                } catch (NumberFormatException e) {
-                    price = 0.0;
-                }
-            }
-
-            // Fallback lookup from catalog if name/price were not provided in form inputs
-            if (productId != null && (productName == null || price <= 0)) {
-                ProductInfo info = CATALOG.get(productId);
-                if (info != null) {
-                    if (productName == null || productName.trim().isEmpty()) {
-                        productName = info.name;
-                    }
-                    if (price <= 0) {
-                        price = info.price;
-                    }
-                }
-            }
-
-            if (productId != null && !productId.trim().isEmpty()) {
-                CartItem item = new CartItem(productId, productName, price, quantity);
-                // Add item or increase quantity if product already in cart
-                cart.addItem(item);
-            }
-
-            // Save updated cart back to session attribute "cart"
-            session.setAttribute("cart", cart);
-            redirectUrl = request.getContextPath() + "/cart.jsp";
-
-        } else if ("update".equalsIgnoreCase(action)) {
-            String productId = request.getParameter("productId");
-            if (productId == null) {
-                productId = request.getParameter("productCode");
-            }
-
-            String quantityStr = request.getParameter("quantity");
-            if (productId != null && quantityStr != null) {
-                try {
-                    int quantity = Integer.parseInt(quantityStr);
-                    cart.updateQuantity(productId, quantity);
-                } catch (NumberFormatException e) {
-                    // ignore invalid input
-                }
-            }
-            session.setAttribute("cart", cart);
-            redirectUrl = request.getContextPath() + "/cart.jsp";
-
-        } else if ("remove".equalsIgnoreCase(action)) {
-            String productId = request.getParameter("productId");
-            if (productId == null) {
-                productId = request.getParameter("productCode");
-            }
-
-            if (productId != null) {
-                cart.removeItem(productId);
-            }
-            session.setAttribute("cart", cart);
-            redirectUrl = request.getContextPath() + "/cart.jsp";
-
-        } else if ("shop".equalsIgnoreCase(action)) {
-            redirectUrl = request.getContextPath() + "/index.jsp";
-
-        } else if ("checkout".equalsIgnoreCase(action)) {
-            redirectUrl = request.getContextPath() + "/cart.jsp";
+            case "checkout":
+            case "cart":
+            default:
+                url = "/cart.jsp";
+                break;
         }
 
-        // Post-Redirect-Get pattern to avoid double form submissions on refresh
-        response.sendRedirect(redirectUrl);
+        getServletContext().getRequestDispatcher(url).forward(request, response);
+    }
+
+    private void addToCart(HttpServletRequest request, Cart cart) {
+        String productCode = getParam(request, "productCode", "productId");
+        String productName = getParam(request, "productName", "description");
+        double price = parseDouble(request.getParameter("price"));
+        int quantity = parseInt(request.getParameter("quantity"), 1);
+
+        Product product = new Product(productCode, productName, price);
+        cart.addItem(new LineItem(product, quantity));
+    }
+
+    private void updateCart(HttpServletRequest request, Cart cart) {
+        String productCode = getParam(request, "productCode", "productId");
+        int quantity = parseInt(request.getParameter("quantity"), 0);
+
+        if (quantity > 0) {
+            cart.updateQuantity(productCode, quantity);
+        } else {
+            cart.removeItem(productCode);
+        }
+    }
+
+    private void removeFromCart(HttpServletRequest request, Cart cart) {
+        String productCode = getParam(request, "productCode", "productId");
+        cart.removeItem(productCode);
+    }
+
+    private String getParam(HttpServletRequest request, String mainParam, String fallbackParam) {
+        String val = request.getParameter(mainParam);
+        if (val == null || val.trim().isEmpty()) {
+            val = request.getParameter(fallbackParam);
+        }
+        return val != null ? val.trim() : "";
+    }
+
+    private int parseInt(String val, int defaultVal) {
+        try {
+            return (val != null && !val.trim().isEmpty()) ? Integer.parseInt(val.trim()) : defaultVal;
+        } catch (NumberFormatException e) {
+            return defaultVal;
+        }
+    }
+
+    private double parseDouble(String val) {
+        try {
+            return (val != null && !val.trim().isEmpty()) ? Double.parseDouble(val.replace("$", "").trim()) : 0.0;
+        } catch (Exception e) {
+            return 0.0;
+        }
     }
 }
